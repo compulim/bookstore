@@ -135,8 +135,9 @@ export default function bookshelf(blobService, container, prefix = '') {
 
   async function readChapter(id, chapterName) {
     const fs = await createBlobFS();
+    const buffer = await fs.readFile(chapterBlob(id, chapterName));
 
-    return JSON.parse(await fs.readFile(chapterBlob(id, chapterName), { encoding: 'utf8' }));
+    return JSON.parse(buffer.toString('utf8'));
   }
 
   async function updateChapter(id, chapterName, updater) {
