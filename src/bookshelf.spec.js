@@ -88,3 +88,9 @@ test('update chapter without cover', async () => {
   expect(updateResult).toMatchSnapshot();
   expect(blobService.getFiles()).toMatchSnapshot();
 });
+
+test('read book', async () => {
+  const result = await bookshelf.readBook('1');
+
+  expect(result).toMatchSnapshot();
+});

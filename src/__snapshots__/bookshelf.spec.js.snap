@@ -2,6 +2,10 @@
 
 exports[`create book 1`] = `
 Object {
+  "chapters": Array [
+    "members",
+    "poi",
+  ],
   "cover": Object {
     "name": "Japan",
   },
@@ -21,15 +25,19 @@ Object {
   "travel/1.json": Object {
     "data": "",
     "metadata": Object {
+      "__chapters": Array [
+        "members",
+        "poi",
+      ],
       "__id": "1",
       "name": "Japan",
     },
   },
-  "travel/1/members.json": Object {
+  "travel/1/chapter/members.json": Object {
     "data": "[\\"user-2\\",\\"user-3\\"]",
     "metadata": Object {},
   },
-  "travel/1/poi.json": Object {
+  "travel/1/chapter/poi.json": Object {
     "data": "[\\"SkyTree\\"]",
     "metadata": Object {},
   },
@@ -41,15 +49,19 @@ Object {
   "travel/1.json": Object {
     "data": "",
     "metadata": Object {
+      "__chapters": Array [
+        "members",
+        "poi",
+      ],
       "__id": "1",
       "name": "Japan",
     },
   },
-  "travel/1/members.json": Object {
+  "travel/1/chapter/members.json": Object {
     "data": "[\\"user-2\\",\\"user-3\\"]",
     "metadata": Object {},
   },
-  "travel/1/poi.json": Object {
+  "travel/1/chapter/poi.json": Object {
     "data": "[\\"SkyTree\\"]",
     "metadata": Object {},
   },
@@ -61,17 +73,42 @@ exports[`delete book 2`] = `Object {}`;
 exports[`list book 1`] = `
 Object {
   "1": Object {
+    "chapters": Array [
+      "members",
+      "poi",
+    ],
     "cover": Object {
       "name": "Japan",
     },
     "id": "1",
   },
   "2": Object {
+    "chapters": Array [],
     "cover": Object {
       "name": "Taipei",
     },
     "id": "2",
   },
+}
+`;
+
+exports[`read book 1`] = `
+Object {
+  "chapters": Array [
+    "members",
+    "poi",
+  ],
+  "cover": Object {
+    "name": "Japan",
+  },
+  "id": "1",
+  "members": Array [
+    "user-2",
+    "user-3",
+  ],
+  "poi": Array [
+    "SkyTree",
+  ],
 }
 `;
 
@@ -83,6 +120,10 @@ Array [
 
 exports[`update book cover 1`] = `
 Object {
+  "chapters": Array [
+    "members",
+    "poi",
+  ],
   "cover": Object {
     "name": "Japan",
     "owner": "John Doe",
@@ -96,16 +137,20 @@ Object {
   "travel/1.json": Object {
     "data": "",
     "metadata": Object {
+      "__chapters": Array [
+        "members",
+        "poi",
+      ],
       "__id": "1",
       "name": "Japan",
       "owner": "John Doe",
     },
   },
-  "travel/1/members.json": Object {
+  "travel/1/chapter/members.json": Object {
     "data": "[\\"user-2\\",\\"user-3\\"]",
     "metadata": Object {},
   },
-  "travel/1/poi.json": Object {
+  "travel/1/chapter/poi.json": Object {
     "data": "[\\"SkyTree\\"]",
     "metadata": Object {},
   },
@@ -126,6 +171,10 @@ Array [
 
 exports[`update chapter with cover 3`] = `
 Object {
+  "chapters": Array [
+    "members",
+    "poi",
+  ],
   "cover": Object {
     "name": "Japan",
     "owner": "John Doe",
@@ -143,16 +192,20 @@ Object {
   "travel/1.json": Object {
     "data": "",
     "metadata": Object {
+      "__chapters": Array [
+        "members",
+        "poi",
+      ],
       "__id": "1",
       "name": "Japan",
       "owner": "John Doe",
     },
   },
-  "travel/1/members.json": Object {
+  "travel/1/chapter/members.json": Object {
     "data": "[\\"user-2\\",\\"user-3\\"]",
     "metadata": Object {},
   },
-  "travel/1/poi.json": Object {
+  "travel/1/chapter/poi.json": Object {
     "data": "[\\"SkyTree\\",\\"Asakusa\\"]",
     "metadata": Object {},
   },
@@ -167,6 +220,10 @@ Array [
 
 exports[`update chapter without cover 2`] = `
 Object {
+  "chapters": Array [
+    "members",
+    "poi",
+  ],
   "cover": Object {
     "name": "Japan",
   },
@@ -183,15 +240,19 @@ Object {
   "travel/1.json": Object {
     "data": "",
     "metadata": Object {
+      "__chapters": Array [
+        "members",
+        "poi",
+      ],
       "__id": "1",
       "name": "Japan",
     },
   },
-  "travel/1/members.json": Object {
+  "travel/1/chapter/members.json": Object {
     "data": "[\\"user-2\\",\\"user-3\\"]",
     "metadata": Object {},
   },
-  "travel/1/poi.json": Object {
+  "travel/1/chapter/poi.json": Object {
     "data": "[\\"SkyTree\\",\\"Asakusa\\"]",
     "metadata": Object {},
   },

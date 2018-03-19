@@ -1,5 +1,9 @@
-export default function removeKey(map, key) {
-  const { [key]: deleted, ...nextMap } = map;
+export default function removeKey(map, ...keys) {
+  return Object.keys(map).reduce((nextMap, key) => {
+    if (!keys.includes(key)) {
+      nextMap[key] = map[key];
+    }
 
-  return nextMap;
+    return nextMap;
+  }, {});
 }
