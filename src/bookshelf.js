@@ -11,6 +11,15 @@ const JSON_CONTENT_SETTINGS_OPTIONS = {
   }
 };
 
+function validChapterName(chapter) {
+  return (
+    chapter !== 'id'
+    && chapter !== 'chapters'
+    && chapter !== 'cover'
+    && /^[\d\w\.-]+$/.test(chapter)
+  );
+}
+
 export default function bookshelf(blobService, container, prefix = '') {
   function coverBlob(id) {
     return `${ prefix }${ id }.json`;
@@ -38,6 +47,10 @@ export default function bookshelf(blobService, container, prefix = '') {
 
     try {
       await Promise.all(Object.keys(chapters).map(chapterName => {
+        if (!validChapterName(chapterName)) {
+          return Promise.reject(new Error('invalid chapter name'));
+        }
+
         return fs.writeFile(
           chapterBlob(id, chapterName),
           JSON.stringify(chapters[chapterName]),
@@ -45,7 +58,7 @@ export default function bookshelf(blobService, container, prefix = '') {
         );
       }));
 
-      await fs.writeFile(coverBlob(id), '', { metadata: { ...cover, __chapters: Object.keys(chapters), __id: id } });
+      await fs.writeFile(coverBlob(id), '', { metadata: { ...cover, __chapters: Object.keys(chapters).join(','), __id: id } });
     } catch (err) {
       await onErrorResumeNext(() => Promise.all(
         Object.keys(chapters).map(chapterName => fs.unlink(chapterBlob(id, chapterName)))
@@ -72,14 +85,15 @@ export default function bookshelf(blobService, container, prefix = '') {
   async function readBook(id) {
     const fs = await createBlobFS();
     const metadata = await readBookMetadata(fs, id);
-    const chaptersArray = await Promise.all(metadata.__chapters.map(chapter => readChapter(id, chapter)));
-    const chapters = metadata.__chapters.reduce((chapters, name, index) => ({
+    const chapterNames = metadata.__chapters.split(',');
+    const chaptersArray = await Promise.all(chapterNames.map(chapter => readChapter(id, chapter)));
+    const chapters = chapterNames.reduce((chapters, name, index) => ({
       ...chapters,
       [name]: chaptersArray[index]
     }), {});
 
     return {
-      chapters: metadata.__chapters,
+      chapters: chapterNames,
       cover: removeKey(metadata, '__chapters', '__id'),
       id,
       ...chapters
@@ -89,10 +103,10 @@ export default function bookshelf(blobService, container, prefix = '') {
   async function updateBookCover(id, updater) {
     const fs = await createBlobFS();
     const metadata = await readBookMetadata(fs, id);
-    const chapters = metadata.__chapters;
+    const chapters = metadata.__chapters.split(',');
     const nextCover = updater(removeKey(metadata, '__chapters', '__id'));
 
-    await fs.setMetadata(coverBlob(id), { ...nextCover, __chapters: chapters, __id: id });
+    await fs.setMetadata(coverBlob(id), { ...nextCover, __chapters: chapters.join(','), __id: id });
 
     return { id, chapters, cover: nextCover };
   }
@@ -105,7 +119,7 @@ export default function bookshelf(blobService, container, prefix = '') {
       ...books,
       [entry.metadata.__id]: {
         id: entry.metadata.__id,
-        chapters: entry.metadata.__chapters,
+        chapters: entry.metadata.__chapters ? entry.metadata.__chapters.split(',') : [],
         cover: removeKey(entry.metadata, '__chapters', '__id')
       }
     }), {});
@@ -128,7 +142,7 @@ export default function bookshelf(blobService, container, prefix = '') {
   async function updateChapter(id, chapterName, updater) {
     const fs = await createBlobFS();
     const metadata = await readBookMetadata(fs, id);
-    const chapters = metadata.__chapters;
+    const chapters = metadata.__chapters.split(',');
     const cover = removeKey(metadata, '__chapters', '__id');
     const chapter = await readChapter(id, chapterName);
     const { chapter: nextChapter, cover: nextCover } = updater({ chapter, cover });
@@ -137,7 +151,7 @@ export default function bookshelf(blobService, container, prefix = '') {
 
     if (nextCover) {
       try {
-        await fs.setMetadata(coverBlob(id), { ...nextCover, __chapters: chapters, __id: id });
+        await fs.setMetadata(coverBlob(id), { ...nextCover, __chapters: chapters.join(','), __id: id });
       } catch (err) {
         await onErrorResumeNext(() => fs.writeFile(chapterBlob(id, chapterName), JSON.stringify(chapter), JSON_CONTENT_SETTINGS_OPTIONS));
         throw err;

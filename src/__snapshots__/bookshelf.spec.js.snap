@@ -25,10 +25,7 @@ Object {
   "travel/1.json": Object {
     "data": "",
     "metadata": Object {
-      "__chapters": Array [
-        "members",
-        "poi",
-      ],
+      "__chapters": "members,poi",
       "__id": "1",
       "name": "Japan",
     },
@@ -49,10 +46,7 @@ Object {
   "travel/1.json": Object {
     "data": "",
     "metadata": Object {
-      "__chapters": Array [
-        "members",
-        "poi",
-      ],
+      "__chapters": "members,poi",
       "__id": "1",
       "name": "Japan",
     },
@@ -137,10 +131,7 @@ Object {
   "travel/1.json": Object {
     "data": "",
     "metadata": Object {
-      "__chapters": Array [
-        "members",
-        "poi",
-      ],
+      "__chapters": "members,poi",
       "__id": "1",
       "name": "Japan",
       "owner": "John Doe",
@@ -192,10 +183,7 @@ Object {
   "travel/1.json": Object {
     "data": "",
     "metadata": Object {
-      "__chapters": Array [
-        "members",
-        "poi",
-      ],
+      "__chapters": "members,poi",
       "__id": "1",
       "name": "Japan",
       "owner": "John Doe",
@@ -240,10 +228,7 @@ Object {
   "travel/1.json": Object {
     "data": "",
     "metadata": Object {
-      "__chapters": Array [
-        "members",
-        "poi",
-      ],
+      "__chapters": "members,poi",
       "__id": "1",
       "name": "Japan",
     },
