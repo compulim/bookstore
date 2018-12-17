@@ -13,7 +13,7 @@ script:
 - docker-compose up --build -d
 - npm test -- --coverage --coverageReporters=lcov --coverageReporters=text
 - docker-compose down --rmi all
-- npm run coveralls
+- cat ./coverage/lcov.info | node_modules/.bin/coveralls
 
 before_deploy:
 - git config --local user.name "William Wong"
