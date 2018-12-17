@@ -102,7 +102,7 @@ test('Create an item', async () => {
   await book1ChangePromise;
 
   expect(book1ChangeHook).toHaveBeenCalledTimes(1);
-  expect(book1ChangeHook).toHaveBeenCalledWith({ id });
+  expect(book1ChangeHook).toHaveBeenCalledWith({ id, summary: { sum: 3 } });
   expect(book1.list()).resolves.toEqual({
     [id]: {
       from: 'blob',
