@@ -28,7 +28,7 @@ let subscribeRedis;
 
 beforeEach(async () => {
   await Promise.all([
-    new Promise(resolve => {
+    (async () => {
       blobService = createBlobService(
         process.env.AZURE_STORAGE_ACCOUNT,
         process.env.AZURE_STORAGE_ACCESS_KEY
@@ -37,14 +37,10 @@ beforeEach(async () => {
       container = `${ process.env.AZURE_STORAGE_CONTAINER_PREFIX }${ Math.random().toString(36).substr(2, 5) }`;
       promisifiedBlobService = createPromisifiedBlobService(blobService);
 
-      storage = createStorageUsingAzureStorage(blobService, container);
-      storage.on('ready', () => resolve());
+      await promisifiedBlobService.createContainerIfNotExists(container, { publicAccessLevel: 'blob' });
 
-      // await promisifiedBlobService.createContainerIfNotExists(
-      //   container,
-      //   { publicAccessLevel: 'blob' },
-      // );
-    }),
+      storage = createStorageUsingAzureStorage(blobService, container);
+    })(),
     new Promise(resolve => {
       publishRedis = createRedisClient();
       publishRedis.on('ready', () => resolve());

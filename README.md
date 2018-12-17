@@ -24,6 +24,7 @@ For peer dependencies, you will also need `npm install azure-storage@2 redis`.
 ```js
 const { createBlobService } = require('azure-storage');
 const { createClient } = require('redis');
+const updateIn = require('simple-update-in');
 const createBook, { createPubSubUsingRedis, createStorageUsingAzureStorage } = require('bookstore');
 
 const blobService = createBlobService(
@@ -33,35 +34,38 @@ const blobService = createBlobService(
 
 const publishRedis = createClient();
 const subscribeRedis = publishRedis.duplicate();
-const { publish, subscribe } = createPubSubUsingRedis(publishRedis, subscribeRedis, 'blob-container-name');
-const storage = createStorageUsingAzureStorage(blobService, 'blob-container-name');
 
 const book = createBook(
   ({ x, y }) => ({ sum: x + y }),
-  { publish, storage, subscribe }
+  {
+    ...createPubSubUsingRedis(publishRedis, subscribeRedis, 'blob-container-name'),
+    ...createStorageUsingAzureStorage(blobService, 'blob-container-name')
+  }
 );
 
-await book.create('page-id', { x: 1, y: 2 });
+await book.create('page-0', { x: 1, y: 2 });
 
 // Fetching the content of the page
 // { x: 1, y: 2 }
-await book.fetch('page-id');
+await book.fetch('page-0');
 
 // Update a page
 // We use `simple-update-in` and updater function for handling concurrency
-await book.update('page-id', ['x'], () => 3);
+await book.update('page-0', content => updateIn(content, ['x'], () => 3));
 
 // Fetching summary of all pages
-// { 'page-id': {
+// { 'page-0': {
 //   summary: { sum: 3 }
 // } }
 await book.list();
 
-// Forcefully refresh TOC
+// Forcefully refresh all summaries
+// By default, summary cache only valid for 10 seconds
+// You should not need to call this function, because we broadcast latest summaries via Redis
 await book.refresh();
 
 // Delete a page
-await book.del('page-id');
+await book.del('page-0');
 ```
 
 ## Peer requirements

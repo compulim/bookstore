@@ -1,37 +1,13 @@
-import { EventEmitter } from 'events';
 import PromisifiedBlobService from './PromisifiedBlobService';
 
 const METADATA_SUMMARY_NAME = 'summary';
 
-// function reduceMap(map, reducer, initialValue) {
-//   return Object.keys(map).reduce((accumulator, currentKey) => reducer.call(map, accumulator, map[currentKey], currentKey), initialValue || map);
-// }
+export default function (blobService, container) {
+  const promisifiedBlobService = new PromisifiedBlobService(blobService);
 
-// function mapMap(map, mapper) {
-//   return reduceMap(map, (accumulator, currentValue, currentKey) => {
-//     accumulator[currentKey] = mapper.call(map, currentValue, currentKey);
-
-//     return accumulator;
-//   }, {});
-// }
-
-class Storage extends EventEmitter {
-  constructor(blobService, container) {
-    super();
-
-    this.blobService = blobService;
-    this.container = container;
-    this.promisifiedBlobService = new PromisifiedBlobService(blobService);
-
-    (async () => {
-      await this.promisifiedBlobService.createContainerIfNotExists(this.container, { publicAccessLevel: 'blob' });
-      this.emit('ready');
-    })()
-  }
-
-  async create(blob, content, summary) {
-    await this.promisifiedBlobService.createBlockBlobFromText(
-      this.container,
+  const create = async (blob, content, summary) => {
+    await promisifiedBlobService.createBlockBlobFromText(
+      container,
       blob,
       JSON.stringify(content),
       {
@@ -40,18 +16,18 @@ class Storage extends EventEmitter {
         }
       }
     );
-  }
+  };
 
-  async del(blob) {
-    await this.promisifiedBlobService.deleteBlob(
-      this.container,
+  const del = async blob => {
+    await promisifiedBlobService.deleteBlob(
+      container,
       blob
     );
-  }
+  };
 
-  async listSummaries() {
-    const { entries } = await this.promisifiedBlobService.listBlobsSegmented(
-      this.container,
+  const listSummaries = async () => {
+    const { entries } = await promisifiedBlobService.listBlobsSegmented(
+      container,
       null,
       { include: 'metadata' }
     );
@@ -66,24 +42,24 @@ class Storage extends EventEmitter {
       }),
       {}
     );
-  }
+  };
 
-  async _lock(blob) {
-    const { id } = await this.promisifiedBlobService.acquireLease(
-      this.container,
+  const lock = async blob => {
+    const { id } = await promisifiedBlobService.acquireLease(
+      container,
       blob,
       {}
     );
 
     return id;
-  }
+  };
 
-  async read(blob) {
+  const read = async blob => {
     const {
       metadata: { [METADATA_SUMMARY_NAME]: summaryJSON },
       text: contentJSON
-    } = await this.promisifiedBlobService.getBlobToText(
-      this.container,
+    } = await promisifiedBlobService.getBlobToText(
+      container,
       blob,
       {}
     );
@@ -92,25 +68,25 @@ class Storage extends EventEmitter {
       content: JSON.parse(contentJSON),
       summary: JSON.parse(summaryJSON)
     };
-  }
+  };
 
-  async _unlock(blob, lockToken) {
-    await this.promisifiedBlobService.releaseLease(
-      this.container,
+  const unlock = async (blob, lockToken) => {
+    await promisifiedBlobService.releaseLease(
+      container,
       blob,
       lockToken
     );
-  }
+  };
 
-  async update(blob, updater) {
-    const lockToken = await this._lock(blob);
+  const update = async (blob, updater) => {
+    const lockToken = await lock(blob);
 
     try {
-      const { content, summary } = await this.read(blob);
+      const { content, summary } = await read(blob);
       const { content: nextContent, summary: nextSummary } = await updater(content, summary);
 
-      await this.promisifiedBlobService.createBlockBlobFromText(
-        this.container,
+      await promisifiedBlobService.createBlockBlobFromText(
+        container,
         blob,
         JSON.stringify(nextContent),
         {
@@ -121,11 +97,15 @@ class Storage extends EventEmitter {
         }
       );
     } finally {
-      await this._unlock(blob, lockToken);
+      await unlock(blob, lockToken);
     }
-  }
-}
+  };
 
-export default function (blobService, container) {
-  return new Storage(blobService, container);
+  return {
+    create,
+    del,
+    listSummaries,
+    read,
+    update
+  };
 }
