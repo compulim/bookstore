@@ -73,8 +73,9 @@ await book.update('page-0', content => updateIn(content, ['x'], () => 3));
 
 // "change" event emitted when update broadcast on Redis
 // Only summaries are sent over Redis
-book.on('change', id => {
+book.subscribe(({ id, summary }) => {
   console.log(id); // 'page-0'
+  console.log(summary); // { sum: 5 }
 });
 
 // Listing summary of all pages again, with new changes

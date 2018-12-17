@@ -26,7 +26,7 @@ export default async function (summarizer, facility) {
           break;
       }
 
-      subscriptions.forEach(subscription => subscription({ id }));
+      subscriptions.forEach(subscription => subscription({ id, summary }));
     } catch (err) {
       console.error(err);
     }
