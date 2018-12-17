@@ -1,0 +1,9 @@
+version: '3'
+
+services:
+  # On Windows, run with COMPOSE_CONVERT_WINDOWS_PATHS=1
+
+  redis:
+    image: redis
+    ports:
+    - "6379:6379"

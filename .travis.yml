@@ -1,5 +1,8 @@
 language: node_js
 
+services:
+- docker
+
 node_js:
 - "10"
 
@@ -7,7 +10,9 @@ before_script:
 - npm run build
 
 script:
+- docker-compose up --build -d
 - npm test -- --coverage --coverageReporters=lcov --coverageReporters=text
+- docker-compose down --rmi all
 - npm run coveralls
 
 before_deploy:
