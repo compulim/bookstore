@@ -1,0 +1,57 @@
+{
+  "name": "bookstore",
+  "version": "2.0.0-0",
+  "description": "",
+  "files": [
+    "lib/**/*"
+  ],
+  "main": "lib/index.js",
+  "scripts": {
+    "build": "babel --out-dir lib --ignore **/*.spec.js,**/*.test.js --source-maps true src/",
+    "coveralls": "cat ./coverage/lcov.info | coveralls",
+    "start:redis": "docker run -it -p 6379:6379 --rm redis",
+    "test": "jest",
+    "watch": "npm run build -- --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/compulim/bookstore.git"
+  },
+  "author": "William Wong <compulim@hotmail.com> (http://compulim.info/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/compulim/bookstore/issues"
+  },
+  "homepage": "https://github.com/compulim/bookstore#readme",
+  "jest": {
+    "collectCoverage": false,
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ],
+    "coverageReporters": [
+      "lcov",
+      "text-summary"
+    ],
+    "testEnvironment": "node"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.1.5",
+    "@babel/core": "^7.1.6",
+    "@babel/plugin-proposal-object-rest-spread": "^7.0.0",
+    "@babel/plugin-transform-runtime": "^7.1.0",
+    "@babel/preset-env": "^7.1.6",
+    "babel-core": "^7.0.0-bridge.0",
+    "babel-jest": "^23.6.0",
+    "coveralls": "^3.0.2",
+    "dotenv": "^6.1.0",
+    "has-resolved": "^1.1.0",
+    "jest": "^23.6.0",
+    "p-defer": "^1.0.0"
+  },
+  "dependencies": {
+    "@babel/runtime": "^7.1.5",
+    "azure-storage": "^2.10.2",
+    "redis": "^2.8.0",
+    "simple-update-in": "^2.0.2"
+  }
+}

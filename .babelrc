@@ -1,0 +1,14 @@
+{
+  "plugins": [
+    "@babel/plugin-proposal-object-rest-spread",
+    "@babel/plugin-transform-runtime"
+  ],
+  "presets": [
+    ["@babel/preset-env", {
+      "forceAllTransforms": true,
+      "targets": {
+        "node": "10"
+      }
+    }]
+  ]
+}
