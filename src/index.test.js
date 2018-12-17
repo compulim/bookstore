@@ -94,7 +94,6 @@ test('Create an item', async () => {
   });
   const book2ChangePromise = new Promise(resolve => book1.subscribe(resolve));
 
-  await book2.refresh();
   await book1.create(id, { x: 1, y: 2 });
 
   expect(book1.get(id)).resolves.toEqual({ x: 1, y: 2 });
@@ -104,28 +103,13 @@ test('Create an item', async () => {
   expect(book1ChangeHook).toHaveBeenCalledTimes(1);
   expect(book1ChangeHook).toHaveBeenCalledWith({ id, summary: { sum: 3 } });
   expect(book1.list()).resolves.toEqual({
-    [id]: {
-      from: 'blob',
-      summary: { sum: 3 }
-    }
+    [id]: { sum: 3 }
   });
 
   await book2ChangePromise;
 
   expect(book2.list()).resolves.toEqual({
-    [id]: {
-      from: 'redis',
-      summary: { sum: 3 }
-    }
-  });
-
-  await book2.refresh();
-
-  expect(book2.list()).resolves.toEqual({
-    [id]: {
-      from: 'blob',
-      summary: { sum: 3 }
-    }
+    [id]: { sum: 3 }
   });
 });
 
@@ -133,21 +117,14 @@ test('Update an item', async () => {
   const id = 'update-an-item';
 
   await book1.create(id, { x: 1, y: 2 });
-  await book2.refresh();
   await book1.update(id, content => updateIn(content, ['x'], () => 3));
   await expect(book1.get(id)).resolves.toEqual({ x: 3, y: 2 });
   await expect(book1.list()).resolves.toEqual({
-    [id]: {
-      from: 'blob',
-      summary: { sum: 5 }
-    }
+    [id]: { sum: 5 }
   });
 
   await expect(book2.list()).resolves.toEqual({
-    [id]: {
-      from: 'redis',
-      summary: { sum: 5 }
-    }
+    [id]: { sum: 5 }
   });
 });
 
@@ -169,7 +146,6 @@ test('Update an item by 2 clients simultaneously', async () => {
   await checkpoint.promise;
 
   expect(book2.update(id, content => updateIn(content, ['x'], () => 0))).rejects.toBeTruthy();
-  await book2.refresh();
 
   await expect(book1.get(id)).resolves.toEqual({ x: 1, y: 2 });
 
@@ -179,10 +155,7 @@ test('Update an item by 2 clients simultaneously', async () => {
   await expect(book1.get(id)).resolves.toEqual({ x: 3, y: 2 });
 
   await expect(book2.list()).resolves.toEqual({
-    [id]: {
-      from: 'redis',
-      summary: { sum: 5 }
-    }
+    [id]: { sum: 5 }
   });
 });
 
@@ -190,23 +163,15 @@ test('Delete an item', async () => {
   const id = 'delete-an-item';
 
   await book1.create(id, { x: 1, y: 2 });
-  await book2.refresh();
 
   await expect(book2.list()).resolves.toEqual({
-    [id]: {
-      from: 'blob',
-      summary: { sum: 3 }
-    }
+    [id]: { sum: 3 }
   });
 
   await book1.del(id);
 
   await expect(book1.get(id)).resolves.toBeFalsy();
   await expect(book1.list()).resolves.toEqual({});
-  await expect(book2.list()).resolves.toEqual({});
-
-  await book2.refresh();
-
   await expect(book2.list()).resolves.toEqual({});
 });
 

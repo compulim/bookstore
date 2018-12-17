@@ -3,27 +3,26 @@ import updateIn from 'simple-update-in';
 import createPubSubUsingRedis from './createPubSubUsingRedis';
 import createStorageUsingAzureStorage from './createStorageUsingAzureStorage';
 
-const SUMMARY_VALIDITY = 10000;
-
-export default async function (summarizer, facility) {
+export default async function (summarizer, facility, options = { cacheValidity: 10000 }) {
   let cached = {};
   let lastRefresh = 0;
   let subscriptions = [];
 
   const unsubscribe = await facility.subscribe(({ action, id, summary }) => {
     try {
-      switch (action) {
-        case 'create':
-        case 'update':
-          cached = updateIn(cached, [id, 'from'], () => 'redis');
-          cached = updateIn(cached, [id, 'summary'], () => summary);
+      if (options.cacheValidity > 0) {
+        switch (action) {
+          case 'create':
+          case 'update':
+            cached = updateIn(cached, [id], () => summary);
 
-          break;
+            break;
 
-        case 'delete':
-          cached = updateIn(cached, [id]);
+          case 'delete':
+            cached = updateIn(cached, [id]);
 
-          break;
+            break;
+        }
       }
 
       subscriptions.forEach(subscription => subscription({ id, summary }));
@@ -37,7 +36,9 @@ export default async function (summarizer, facility) {
 
     await facility.create(id, data, summary);
 
-    cached[id] = { ...cached[id], summary };
+    if (options.cacheValidity > 0) {
+      cached[id] = { ...cached[id], summary };
+    }
 
     await facility.publish({
       action: 'create',
@@ -53,7 +54,7 @@ export default async function (summarizer, facility) {
       action: 'delete',
       id
     });
-  }
+  };
 
   const end = async () => {
     await unsubscribe();
@@ -74,33 +75,26 @@ export default async function (summarizer, facility) {
         throw err;
       }
     }
-  }
+  };
 
   const list = async () => {
-    if (Date.now() - lastRefresh > SUMMARY_VALIDITY) {
-      await refresh();
+    let list;
+
+    if (options.cacheValidity > 0 && Date.now() - lastRefresh <= options.cacheValidity) {
+      list = cached;
     }
 
-    return cached;
-  }
+    if (!list) {
+      list = await facility.list();
 
-  const refresh = async () => {
-    const summaries = await facility.list();
-    const nextCached = {};
+      if (options.cacheValidity > 0) {
+        cached = list;
+        lastRefresh = Date.now();
+      }
+    }
 
-    Object.keys(summaries).forEach(id => {
-      const summary = summaries[id];
-
-      nextCached[id] = {
-        ...cached[id],
-        from: 'blob',
-        summary
-      };
-    });
-
-    cached = nextCached;
-    lastRefresh = Date.now();
-  }
+    return list;
+  };
 
   const subscribe = listener => {
     subscriptions.push(listener);
@@ -139,7 +133,7 @@ export default async function (summarizer, facility) {
         summary: nextSummary
       });
     }
-  }
+  };
 
   return {
     create,
@@ -147,7 +141,6 @@ export default async function (summarizer, facility) {
     end,
     get,
     list,
-    refresh,
     subscribe,
     update
   };

@@ -27,6 +27,8 @@ A small data framework for collaborative list editing using Azure Blob Storage a
    - Updater function can be programmed as optimistic or pessimistic concurrency
    - We believe this model makes concurrency issues a little bit easier to handle
 
+`bookstore` is designed to be exposed over Web Socket.
+
 # How to use
 
 For production build, `npm install bookstore`. For development build, `npm install bookstore@master`.
