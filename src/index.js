@@ -9,22 +9,16 @@ const SUMMARY_VALIDITY = 10000;
 class Bookstore extends EventEmitter {
   constructor(
     summarizer,
-    {
-      publish,
-      storage,
-      subscribe
-    }
+    facility
   ) {
     super();
 
     this._cached = {};
 
-    this.publish = publish;
-    this.storage = storage;
-    this.subscribe = subscribe;
+    this.facility = facility;
     this.summarizer = summarizer;
 
-    this._ready = this.subscribe(this.handleMessage.bind(this)).then(unsubscribe => this.unsubscribe = unsubscribe);
+    this._ready = this.facility.subscribe(this.handleMessage.bind(this)).then(unsubscribe => this.unsubscribe = unsubscribe);
 
     this._lastRefresh = 0;
   }
@@ -32,11 +26,11 @@ class Bookstore extends EventEmitter {
   async create(id, data) {
     const summary = await this.summarizer(data);
 
-    await this.storage.create(id, data, summary);
+    await this.facility.create(id, data, summary);
 
     this._cached[id] = { ...this._cached[id], summary };
 
-    await this.publish({
+    await this.facility.publish({
       action: 'create',
       id,
       summary
@@ -45,9 +39,9 @@ class Bookstore extends EventEmitter {
 
   async del(id) {
     await this._ready;
-    await this.storage.del(id);
+    await this.facility.del(id);
 
-    await this.publish({
+    await this.facility.publish({
       action: 'delete',
       id
     });
@@ -62,7 +56,7 @@ class Bookstore extends EventEmitter {
     await this._ready;
 
     try {
-      const { content } = await this.storage.read(id);
+      const { content } = await this.facility.read(id);
 
       return content;
     } catch (err) {
@@ -111,7 +105,7 @@ class Bookstore extends EventEmitter {
   async refresh() {
     await this._ready;
 
-    const summaries = await this.storage.listSummaries();
+    const summaries = await this.facility.listSummaries();
     const nextCached = {};
 
     Object.keys(summaries).forEach(id => {
@@ -133,7 +127,7 @@ class Bookstore extends EventEmitter {
 
     let nextSummary;
 
-    await this.storage.update(id, async content => {
+    await this.facility.update(id, async content => {
       const nextContent = await updater(content);
 
       nextSummary = await this.summarizer(nextContent);
@@ -144,7 +138,7 @@ class Bookstore extends EventEmitter {
       };
     });
 
-    await this.publish({
+    await this.facility.publish({
       action: 'update',
       id,
       summary: nextSummary
@@ -154,19 +148,11 @@ class Bookstore extends EventEmitter {
 
 export default function (
   summarizer,
-  {
-    publish,
-    storage,
-    subscribe
-  }
+  facility
 ) {
   return new Bookstore(
     summarizer,
-    {
-      publish,
-      storage,
-      subscribe
-    }
+    facility
   );
 }
 

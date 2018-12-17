@@ -51,16 +51,20 @@ beforeEach(async () => {
     })
   ]);
 
-  const { publish, subscribe } = createPubSubUsingRedis(publishRedis, subscribeRedis, 'multiplex');
+  const pubSub = createPubSubUsingRedis(publishRedis, subscribeRedis, 'multiplex');
+  const facility = {
+    ...pubSub,
+    ...storage
+  };
 
   book1 = createBook(
     ({ x, y }) => ({ sum: x + y }),
-    { publish, storage, subscribe }
+    facility
   );
 
   book2 = createBook(
     ({ x, y }) => ({ sum: x + y }),
-    { publish, storage, subscribe }
+    facility
   );
 });
 
