@@ -25,7 +25,23 @@ export default function (blobService, container) {
     );
   };
 
-  const listSummaries = async () => {
+  const get = async blob => {
+    const {
+      metadata: { [METADATA_SUMMARY_NAME]: summaryJSON },
+      text: contentJSON
+    } = await promisifiedBlobService.getBlobToText(
+      container,
+      blob,
+      {}
+    );
+
+    return {
+      content: JSON.parse(contentJSON),
+      summary: JSON.parse(summaryJSON)
+    };
+  };
+
+  const list = async () => {
     const { entries } = await promisifiedBlobService.listBlobsSegmented(
       container,
       null,
@@ -54,22 +70,6 @@ export default function (blobService, container) {
     return id;
   };
 
-  const read = async blob => {
-    const {
-      metadata: { [METADATA_SUMMARY_NAME]: summaryJSON },
-      text: contentJSON
-    } = await promisifiedBlobService.getBlobToText(
-      container,
-      blob,
-      {}
-    );
-
-    return {
-      content: JSON.parse(contentJSON),
-      summary: JSON.parse(summaryJSON)
-    };
-  };
-
   const unlock = async (blob, lockToken) => {
     await promisifiedBlobService.releaseLease(
       container,
@@ -82,20 +82,25 @@ export default function (blobService, container) {
     const lockToken = await lock(blob);
 
     try {
-      const { content, summary } = await read(blob);
+      const { content, summary } = await get(blob);
       const { content: nextContent, summary: nextSummary } = await updater(content, summary);
 
-      await promisifiedBlobService.createBlockBlobFromText(
-        container,
-        blob,
-        JSON.stringify(nextContent),
-        {
-          leaseId: lockToken,
-          metadata: {
-            [METADATA_SUMMARY_NAME]: JSON.stringify(nextSummary)
+      if (
+        nextContent !== content
+        || nextSummary !== summary
+      ) {
+        await promisifiedBlobService.createBlockBlobFromText(
+          container,
+          blob,
+          JSON.stringify(nextContent),
+          {
+            leaseId: lockToken,
+            metadata: {
+              [METADATA_SUMMARY_NAME]: JSON.stringify(nextSummary)
+            }
           }
-        }
-      );
+        );
+      }
     } finally {
       await unlock(blob, lockToken);
     }
@@ -104,8 +109,8 @@ export default function (blobService, container) {
   return {
     create,
     del,
-    listSummaries,
-    read,
+    get,
+    list,
     update
   };
 }

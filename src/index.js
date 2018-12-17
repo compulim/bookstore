@@ -1,4 +1,3 @@
-import { EventEmitter } from 'events';
 import updateIn from 'simple-update-in';
 
 import createPubSubUsingRedis from './createPubSubUsingRedis';
@@ -6,57 +5,66 @@ import createStorageUsingAzureStorage from './createStorageUsingAzureStorage';
 
 const SUMMARY_VALIDITY = 10000;
 
-class Bookstore extends EventEmitter {
-  constructor(
-    summarizer,
-    facility
-  ) {
-    super();
+export default async function (summarizer, facility) {
+  let cached = {};
+  let lastRefresh = 0;
+  let subscriptions = [];
 
-    this._cached = {};
+  const unsubscribe = await facility.subscribe(({ action, id, summary }) => {
+    try {
+      switch (action) {
+        case 'create':
+        case 'update':
+          cached = updateIn(cached, [id, 'from'], () => 'redis');
+          cached = updateIn(cached, [id, 'summary'], () => summary);
 
-    this.facility = facility;
-    this.summarizer = summarizer;
+          break;
 
-    this._ready = this.facility.subscribe(this.handleMessage.bind(this)).then(unsubscribe => this.unsubscribe = unsubscribe);
+        case 'delete':
+          cached = updateIn(cached, [id]);
 
-    this._lastRefresh = 0;
-  }
+          break;
+      }
 
-  async create(id, data) {
-    const summary = await this.summarizer(data);
+      subscriptions.forEach(subscription => subscription({ id }));
+    } catch (err) {
+      console.error(err);
+    }
+  });
 
-    await this.facility.create(id, data, summary);
+  const create = async (id, data) => {
+    const summary = await summarizer(data);
 
-    this._cached[id] = { ...this._cached[id], summary };
+    await facility.create(id, data, summary);
 
-    await this.facility.publish({
+    cached[id] = { ...cached[id], summary };
+
+    await facility.publish({
       action: 'create',
       id,
       summary
     });
-  }
+  };
 
-  async del(id) {
-    await this._ready;
-    await this.facility.del(id);
+  const del = async id => {
+    await facility.del(id);
 
-    await this.facility.publish({
+    await facility.publish({
       action: 'delete',
       id
     });
   }
 
-  async end() {
-    await this._ready;
-    await this.unsubscribe();
-  }
+  const end = async () => {
+    await unsubscribe();
 
-  async fetch(id) {
-    await this._ready;
+    cached = {};
+    subscriptions = [];
+  };
 
+  const get = async id => {
     try {
-      const { content } = await this.facility.read(id);
+      const { content } = await facility.get(id);
 
       return content;
     } catch (err) {
@@ -68,69 +76,54 @@ class Bookstore extends EventEmitter {
     }
   }
 
-  handleMessage({ action, id, summary }) {
-    try {
-      switch (action) {
-        case 'create':
-        case 'update':
-          this._cached = updateIn(this._cached, [id, 'from'], () => 'redis');
-          this._cached = updateIn(this._cached, [id, 'summary'], () => summary);
-
-          this.emit('change', { id });
-
-          break;
-
-        case 'delete':
-          this._cached = updateIn(this._cached, [id]);
-
-          this.emit('change', { id });
-
-          break;
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  async list() {
-    await this._ready;
-
-    if (Date.now() - this._lastRefresh > SUMMARY_VALIDITY) {
-      await this.refresh();
+  const list = async () => {
+    if (Date.now() - lastRefresh > SUMMARY_VALIDITY) {
+      await refresh();
     }
 
-    return this._cached;
+    return cached;
   }
 
-  async refresh() {
-    await this._ready;
-
-    const summaries = await this.facility.listSummaries();
+  const refresh = async () => {
+    const summaries = await facility.list();
     const nextCached = {};
 
     Object.keys(summaries).forEach(id => {
       const summary = summaries[id];
 
       nextCached[id] = {
-        ...this._cached[id],
+        ...cached[id],
         from: 'blob',
         summary
       };
     });
 
-    this._cached = nextCached;
-    this._lastRefresh = Date.now();
+    cached = nextCached;
+    lastRefresh = Date.now();
   }
 
-  async update(id, updater) {
-    await this._ready;
+  const subscribe = listener => {
+    subscriptions.push(listener);
 
+    return () => {
+      const index = subscriptions.indexOf(listener);
+
+      if (~index) {
+        subscriptions = [...subscriptions];
+        subscriptions.splice(index, 1);
+      }
+    };
+  };
+
+  const update = async (id, updater) => {
+    let prevSummary;
     let nextSummary;
 
-    await this.facility.update(id, async content => {
+    await facility.update(id, async (content, summary) => {
       const nextContent = await updater(content);
 
-      nextSummary = await this.summarizer(nextContent);
+      prevSummary = summary;
+      nextSummary = nextContent === content ? summary : await summarizer(nextContent);
 
       return {
         content: nextContent,
@@ -138,22 +131,26 @@ class Bookstore extends EventEmitter {
       };
     });
 
-    await this.facility.publish({
-      action: 'update',
-      id,
-      summary: nextSummary
-    });
+    // TODO: Use a deep equality function instead of JSON.stringify
+    if (JSON.stringify(prevSummary) !== JSON.stringify(nextSummary)) {
+      await facility.publish({
+        action: 'update',
+        id,
+        summary: nextSummary
+      });
+    }
   }
-}
 
-export default function (
-  summarizer,
-  facility
-) {
-  return new Bookstore(
-    summarizer,
-    facility
-  );
+  return {
+    create,
+    del,
+    end,
+    get,
+    list,
+    refresh,
+    subscribe,
+    update
+  };
 }
 
 export {

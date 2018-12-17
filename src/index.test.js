@@ -3,6 +3,7 @@ jest.useFakeTimers();
 import { config } from 'dotenv';
 import { createBlobService } from 'azure-storage';
 import { createClient as createRedisClient } from 'redis';
+import { promisify } from 'util';
 import updateIn, { updateInAsync } from 'simple-update-in';
 
 import
@@ -14,55 +15,58 @@ import
 from './index';
 
 import createDeferred from 'p-defer';
-import createPromisifiedBlobService from './PromisifiedBlobService';
 
 config();
 
 let blobService;
 let book1, book2;
 let container;
-let promisifiedBlobService;
 let publishRedis;
-let storage;
 let subscribeRedis;
 
+function createRedisClientWithReady() {
+  return new Promise(resolve => {
+    const client = createRedisClient();
+
+    client.on('ready', () => resolve(client));
+  });
+}
+
+function quitRedis(redis) {
+  return new Promise(resolve => {
+    redis.on('end', resolve);
+    redis.quit();
+  });
+}
+
 beforeEach(async () => {
-  await Promise.all([
-    (async () => {
-      blobService = createBlobService(
-        process.env.AZURE_STORAGE_ACCOUNT,
-        process.env.AZURE_STORAGE_ACCESS_KEY
-      );
+  blobService = createBlobService(
+    process.env.AZURE_STORAGE_ACCOUNT,
+    process.env.AZURE_STORAGE_ACCESS_KEY
+  );
 
-      container = `${ process.env.AZURE_STORAGE_CONTAINER_PREFIX }${ Math.random().toString(36).substr(2, 5) }`;
-      promisifiedBlobService = createPromisifiedBlobService(blobService);
+  container = `${ process.env.AZURE_STORAGE_CONTAINER_PREFIX }${ Math.random().toString(36).substr(2, 5) }`;
 
-      await promisifiedBlobService.createContainerIfNotExists(container, { publicAccessLevel: 'blob' });
+  await promisify(blobService.createContainer.bind(blobService))(container, { publicAccessLevel: 'blob' });
 
-      storage = createStorageUsingAzureStorage(blobService, container);
-    })(),
-    new Promise(resolve => {
-      publishRedis = createRedisClient();
-      publishRedis.on('ready', () => resolve());
-    }),
-    new Promise(resolve => {
-      subscribeRedis = createRedisClient();
-      subscribeRedis.on('ready', () => resolve());
-    })
-  ]);
+  publishRedis = await createRedisClientWithReady();
+  subscribeRedis = await createRedisClientWithReady();
 
-  const pubSub = createPubSubUsingRedis(publishRedis, subscribeRedis, 'multiplex');
   const facility = {
-    ...pubSub,
-    ...storage
+    ...createPubSubUsingRedis(
+      publishRedis,
+      subscribeRedis,
+      container
+    ),
+    ...createStorageUsingAzureStorage(blobService, container)
   };
 
-  book1 = createBook(
+  book1 = await createBook(
     ({ x, y }) => ({ sum: x + y }),
     facility
   );
 
-  book2 = createBook(
+  book2 = await createBook(
     ({ x, y }) => ({ sum: x + y }),
     facility
   );
@@ -72,19 +76,9 @@ afterEach(async () => {
   book1.end();
   book2.end();
 
-  await Promise.all([
-    await (async () => {
-      return await promisifiedBlobService.deleteContainerIfExists(container);
-    })(),
-    publishRedis && new Promise(resolve => {
-      publishRedis.on('end', () => resolve());
-      publishRedis.quit();
-    }),
-    subscribeRedis && new Promise(resolve => {
-      subscribeRedis.on('end', () => resolve());
-      subscribeRedis.quit();
-    })
-  ]);
+  await promisify(blobService.deleteContainerIfExists.bind(blobService))(container);
+  await quitRedis(publishRedis);
+  await quitRedis(subscribeRedis);
 });
 
 test('Setup without issues', () => {});
@@ -93,17 +87,17 @@ test('Create an item', async () => {
   const id = 'create-an-item';
   const book1ChangeHook = jest.fn();
   const book1ChangePromise = new Promise(resolve => {
-    book1.on('change', (...args) => {
+    book1.subscribe((...args) => {
       book1ChangeHook(...args);
       resolve();
     });
   });
-  const book2ChangePromise = new Promise(resolve => book1.on('change', resolve));
+  const book2ChangePromise = new Promise(resolve => book1.subscribe(resolve));
 
   await book2.refresh();
   await book1.create(id, { x: 1, y: 2 });
 
-  expect(book1.fetch(id)).resolves.toEqual({ x: 1, y: 2 });
+  expect(book1.get(id)).resolves.toEqual({ x: 1, y: 2 });
 
   await book1ChangePromise;
 
@@ -141,7 +135,7 @@ test('Update an item', async () => {
   await book1.create(id, { x: 1, y: 2 });
   await book2.refresh();
   await book1.update(id, content => updateIn(content, ['x'], () => 3));
-  await expect(book1.fetch(id)).resolves.toEqual({ x: 3, y: 2 });
+  await expect(book1.get(id)).resolves.toEqual({ x: 3, y: 2 });
   await expect(book1.list()).resolves.toEqual({
     [id]: {
       from: 'blob',
@@ -177,12 +171,12 @@ test('Update an item by 2 clients simultaneously', async () => {
   expect(book2.update(id, content => updateIn(content, ['x'], () => 0))).rejects.toBeTruthy();
   await book2.refresh();
 
-  await expect(book1.fetch(id)).resolves.toEqual({ x: 1, y: 2 });
+  await expect(book1.get(id)).resolves.toEqual({ x: 1, y: 2 });
 
   deferred.resolve();
 
   await updatePromise;
-  await expect(book1.fetch(id)).resolves.toEqual({ x: 3, y: 2 });
+  await expect(book1.get(id)).resolves.toEqual({ x: 3, y: 2 });
 
   await expect(book2.list()).resolves.toEqual({
     [id]: {
@@ -207,7 +201,7 @@ test('Delete an item', async () => {
 
   await book1.del(id);
 
-  await expect(book1.fetch(id)).resolves.toBeFalsy();
+  await expect(book1.get(id)).resolves.toBeFalsy();
   await expect(book1.list()).resolves.toEqual({});
   await expect(book2.list()).resolves.toEqual({});
 
@@ -216,6 +210,6 @@ test('Delete an item', async () => {
   await expect(book2.list()).resolves.toEqual({});
 });
 
-test('Fetching non-existent item', async () => {
-  expect(book1.fetch('non-existent')).resolves.toBeFalsy();
+test('Getting an non-existent item', async () => {
+  expect(book1.get('non-existent')).resolves.toBeFalsy();
 });
