@@ -4,6 +4,7 @@ import { config } from 'dotenv';
 import { createBlobService } from 'azure-storage';
 import { createClient as createRedisClient } from 'redis';
 import { promisify } from 'util';
+import createDeferred from 'p-defer';
 import updateIn, { updateInAsync } from 'simple-update-in';
 
 import
@@ -13,8 +14,6 @@ import
     createStorageUsingAzureStorage
   }
 from './index';
-
-import createDeferred from 'p-defer';
 
 config();
 
@@ -86,19 +85,21 @@ test('Setup without issues', () => {});
 test('Create an item', async () => {
   const id = 'create-an-item';
   const book1ChangeHook = jest.fn();
-  const book1ChangePromise = new Promise(resolve => {
-    book1.subscribe((...args) => {
-      book1ChangeHook(...args);
-      resolve();
-    });
-  });
-  const book2ChangePromise = new Promise(resolve => book1.subscribe(resolve));
+  const book1ChangeDeferred = createDeferred();
 
+  await book1.subscribe((...args) => {
+    book1ChangeHook(...args);
+    book1ChangeDeferred.resolve();
+  });
+
+  const book2ChangeDeferred = createDeferred();
+
+  await book2.subscribe(book2ChangeDeferred.resolve);
   await book1.create(id, { x: 1, y: 2 });
 
   expect(book1.get(id)).resolves.toEqual({ x: 1, y: 2 });
 
-  await book1ChangePromise;
+  await book1ChangeDeferred.promise;
 
   expect(book1ChangeHook).toHaveBeenCalledTimes(1);
   expect(book1ChangeHook).toHaveBeenCalledWith({ id, summary: { sum: 3 } });
@@ -106,7 +107,7 @@ test('Create an item', async () => {
     [id]: { sum: 3 }
   });
 
-  await book2ChangePromise;
+  await book2ChangeDeferred.promise;
 
   expect(book2.list()).resolves.toEqual({
     [id]: { sum: 3 }

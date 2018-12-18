@@ -3,42 +3,15 @@ import updateIn from 'simple-update-in';
 import createPubSubUsingRedis from './createPubSubUsingRedis';
 import createStorageUsingAzureStorage from './createStorageUsingAzureStorage';
 
-export default async function (summarizer, facility, options = { cacheValidity: 10000 }) {
-  let cached = {};
-  let lastRefresh = 0;
+export default async function (summarizer, facility) {
+  let subscribeAllPromise;
   let subscriptions = [];
-
-  const unsubscribe = await facility.subscribe(({ action, id, summary }) => {
-    try {
-      if (options.cacheValidity > 0) {
-        switch (action) {
-          case 'create':
-          case 'update':
-            cached = updateIn(cached, [id], () => summary);
-
-            break;
-
-          case 'delete':
-            cached = updateIn(cached, [id]);
-
-            break;
-        }
-      }
-
-      subscriptions.forEach(subscription => subscription({ id, summary }));
-    } catch (err) {
-      console.error(err);
-    }
-  });
+  let unsubscribeAll;
 
   const create = async (id, data) => {
     const summary = await summarizer(data);
 
     await facility.create(id, data, summary);
-
-    if (options.cacheValidity > 0) {
-      cached[id] = { ...cached[id], summary };
-    }
 
     await facility.publish({
       action: 'create',
@@ -57,9 +30,11 @@ export default async function (summarizer, facility, options = { cacheValidity: 
   };
 
   const end = async () => {
-    await unsubscribe();
+    if (unsubscribeAll) {
+      await unsubscribeAll();
+      unsubscribeAll = null;
+    }
 
-    cached = {};
     subscriptions = [];
   };
 
@@ -78,33 +53,31 @@ export default async function (summarizer, facility, options = { cacheValidity: 
   };
 
   const list = async () => {
-    let list;
-
-    if (options.cacheValidity > 0 && Date.now() - lastRefresh <= options.cacheValidity) {
-      list = cached;
-    }
-
-    if (!list) {
-      list = await facility.list();
-
-      if (options.cacheValidity > 0) {
-        cached = list;
-        lastRefresh = Date.now();
-      }
-    }
-
-    return list;
+    return await facility.list();
   };
 
-  const subscribe = listener => {
+  const subscribe = async listener => {
+    if (!subscribeAllPromise) {
+      subscribeAllPromise = facility.subscribe(({ id, summary }) => {
+        subscriptions.forEach(subscription => subscription({ id, summary }));
+      }).then(fn => unsubscribeAll = fn);
+    }
+
+    await subscribeAllPromise;
+
     subscriptions.push(listener);
 
-    return () => {
+    return async () => {
       const index = subscriptions.indexOf(listener);
 
       if (~index) {
         subscriptions = [...subscriptions];
         subscriptions.splice(index, 1);
+
+        if (!subscriptions.length && unsubscribeAll) {
+          await unsubscribeAll();
+          unsubscribeAll = null;
+        }
       }
     };
   };
