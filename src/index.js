@@ -1,5 +1,6 @@
 import createPubSubUsingRedis from './createPubSubUsingRedis';
 import createStorageUsingAzureStorage from './createStorageUsingAzureStorage';
+import deepEqual from 'fast-deep-equal';
 
 export default function (summarizer, facility) {
   let subscribeAllPromise;
@@ -96,8 +97,7 @@ export default function (summarizer, facility) {
       };
     });
 
-    // TODO: Use a deep equality function instead of JSON.stringify
-    if (JSON.stringify(prevSummary) !== JSON.stringify(nextSummary)) {
+    if (!deepEqual(prevSummary, nextSummary)) {
       await facility.publish({
         action: 'update',
         id,

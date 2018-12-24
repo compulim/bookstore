@@ -50,6 +50,7 @@
   "dependencies": {
     "@babel/runtime": "^7.1.5",
     "azure-storage": "^2.10.2",
+    "fast-deep-equal": "^2.0.1",
     "redis": "^2.8.0",
     "simple-update-in": "^2.0.2"
   }
