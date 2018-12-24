@@ -75,6 +75,7 @@ export default function (summarizer, facility) {
 
         if (!subscriptions.length && unsubscribeAll) {
           await unsubscribeAll();
+          subscriptionAllPromise = null;
           unsubscribeAll = null;
         }
       }
