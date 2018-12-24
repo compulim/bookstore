@@ -83,7 +83,7 @@ export default function (blobService, container) {
 
     try {
       const { content, summary } = await get(blob);
-      const { content: nextContent, summary: nextSummary } = await updater(content, summary);
+      const { content: nextContent, summary: nextSummary } = await updater({ content, summary });
 
       if (
         nextContent !== content

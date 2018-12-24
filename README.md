@@ -100,7 +100,7 @@ Instead of using Blob via Azure Storage and Pub-sub via Redis, you can also use 
    - `get(id)`: Read a blob content
    - `list()`: List all blob summaries, without reading the actual content
    - `update(id, updater)`: Update an existing blob via an updater function, using lock to prevent dirty read
-      - `updater: (content, summary) => ({ content, summary })`
+      - `updater: ({ content, summary }) => ({ content, summary })`
 - Pub-sub
    - `publish(content)`: Publish to a predefined topic
    - `subscribe(callback: content => void): () => void`: Subscribe to a predefined topic via callback, will return a function for unsubscribe

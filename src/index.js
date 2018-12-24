@@ -1,9 +1,7 @@
-import updateIn from 'simple-update-in';
-
 import createPubSubUsingRedis from './createPubSubUsingRedis';
 import createStorageUsingAzureStorage from './createStorageUsingAzureStorage';
 
-export default async function (summarizer, facility) {
+export default function (summarizer, facility) {
   let subscribeAllPromise;
   let subscriptions = [];
   let unsubscribeAll;
@@ -86,7 +84,7 @@ export default async function (summarizer, facility) {
     let prevSummary;
     let nextSummary;
 
-    await facility.update(id, async (content, summary) => {
+    await facility.update(id, async ({ content, summary }) => {
       const nextContent = await updater(content);
 
       prevSummary = summary;
