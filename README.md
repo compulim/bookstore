@@ -19,10 +19,9 @@ A small data framework for collaborative list editing using Azure Blob Storage a
 
 - Content and summary
    - Summary is computed from content, via a summarizer function
-   - Summary are broadcasted via Redis to other nodes, content are not broadcasted
-   - List will fetch all summaries, but not content
+   - When content is updated, only summary is broadcasted via Redis to other nodes
+   - List will fetch all summaries, without content
    - List is cheap, `O(1)`
-   - Nodes will keep summaries in memory
 - Update is done thru lock-update-unlock pattern with updater function
    - Updater function can be programmed as optimistic or pessimistic concurrency
    - We believe this model makes concurrency issues a little bit easier to handle
