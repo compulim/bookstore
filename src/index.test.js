@@ -116,9 +116,17 @@ test('Create an item', async () => {
 
 test('Update an item', async () => {
   const id = 'update-an-item';
+  const book1ChangeHook = jest.fn();
+  const book1ChangeDeferred = createDeferred();
+
+  await book1.subscribe((...args) => {
+    book1ChangeHook(...args);
+    book1ChangeDeferred.resolve();
+  });
 
   await book1.create(id, { x: 1, y: 2 });
   await book1.update(id, content => updateIn(content, ['x'], () => 3));
+  await book1ChangeDeferred.promise;
   await expect(book1.get(id)).resolves.toEqual({ x: 3, y: 2 });
   await expect(book1.list()).resolves.toEqual({
     [id]: { sum: 5 }
@@ -158,6 +166,38 @@ test('Update an item by 2 clients simultaneously', async () => {
   await expect(book2.list()).resolves.toEqual({
     [id]: { sum: 5 }
   });
+});
+
+test('Update an item without summary change', async () => {
+  const id = 'update-an-item-without-summary-change';
+  const book1ChangeHook = jest.fn();
+  const book1ChangeDeferred = createDeferred();
+  let book1NumCalled = 0;
+  const book2ChangeHook = jest.fn();
+  const book2ChangeDeferred = createDeferred();
+  let book2NumCalled = 0;
+
+  await book1.subscribe((...args) => {
+    book1ChangeHook(...args);
+    ++book1NumCalled > 1 && book1ChangeDeferred.resolve();
+  });
+
+  await book2.subscribe((...args) => {
+    book2ChangeHook(...args);
+    ++book2NumCalled > 1 && book2ChangeDeferred.resolve();
+  });
+
+  await book1.create(id, { x: 1, y: 2 });
+  await book1.update(id, content => updateIn(content, ['z'], () => 3));
+  await book1ChangeDeferred.promise;
+  await book2ChangeDeferred.promise;
+
+  expect(book1ChangeHook).toHaveBeenCalledTimes(2);
+  expect(book1ChangeHook).toHaveBeenLastCalledWith({ id, summary: { sum: 3 } });
+  expect(book2ChangeHook).toHaveBeenCalledTimes(2);
+  expect(book2ChangeHook).toHaveBeenLastCalledWith({ id, summary: { sum: 3 } });
+
+  await expect(book1.get(id)).resolves.toEqual({ x: 1, y: 2, z: 3 });
 });
 
 test('Delete an item', async () => {
