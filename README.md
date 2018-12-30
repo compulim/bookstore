@@ -103,6 +103,7 @@ Instead of using Blob via Azure Storage and Pub-sub via Redis, you can also use 
 - Pub-sub
    - `publish(content)`: Publish to a predefined topic
    - `subscribe(callback: content => void): () => void`: Subscribe to a predefined topic via callback, will return a function for unsubscribe
+      - `callback` will be called if content is updated (via `Object.is`) and summary has kept the same
 
 # Contributions
 

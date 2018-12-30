@@ -1,6 +1,5 @@
 import createPubSubUsingRedis from './createPubSubUsingRedis';
 import createStorageUsingAzureStorage from './createStorageUsingAzureStorage';
-import deepEqual from 'fast-deep-equal';
 
 export default function (summarizer, facility) {
   let subscribeAllPromise;
@@ -83,14 +82,14 @@ export default function (summarizer, facility) {
   };
 
   const update = async (id, updater) => {
-    let prevSummary;
     let nextSummary;
+    let changed;
 
     await facility.update(id, async ({ content, summary }) => {
       const nextContent = await updater(content);
 
-      prevSummary = summary;
-      nextSummary = nextContent === content ? summary : await summarizer(nextContent);
+      changed = !Object.is(nextContent, content);
+      nextSummary = changed ? await summarizer(nextContent) : summary;
 
       return {
         content: nextContent,
@@ -98,7 +97,7 @@ export default function (summarizer, facility) {
       };
     });
 
-    if (!deepEqual(prevSummary, nextSummary)) {
+    if (changed) {
       await facility.publish({
         action: 'update',
         id,
