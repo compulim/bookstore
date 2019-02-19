@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - 2019-02-18
+
 ### Added
 
 - Fix [#1](https://github.com/compulim/bookstore/issues/1). `summarizer` will receive `id` of the page as the second argument, in PR [#2](https://github.com/compulim/bookstore/pull/2)
