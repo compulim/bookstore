@@ -13,7 +13,10 @@ script:
 - docker-compose up --build -d
 - npm test -- --coverage --coverageReporters=lcov --coverageReporters=text
 - docker-compose down --rmi all
-- cat ./coverage/lcov.info | node_modules/.bin/coveralls
+
+# 2019-02-18 Temporarily disable Coveralls, it always complain in Travis CI with HTTP 422: Couldn't find a repository matching this job.
+#            Tried to set COVERALLS_REPO_TOKEN but no luck
+# - cat ./coverage/lcov.info | node_modules/.bin/coveralls
 
 before_deploy:
 - git config --local user.name "William Wong"

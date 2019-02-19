@@ -7,7 +7,7 @@ export default function (summarizer, facility) {
   let unsubscribeAll;
 
   const create = async (id, data) => {
-    const summary = await summarizer(data);
+    const summary = await summarizer(data, id);
 
     await facility.create(id, data, summary);
 
