@@ -72,8 +72,8 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
-  book1.end();
-  book2.end();
+  await book1.end();
+  await book2.end();
 
   await promisify(blobService.deleteContainerIfExists.bind(blobService))(container);
   await quitRedis(publishRedis);

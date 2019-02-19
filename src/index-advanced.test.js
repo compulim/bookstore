@@ -76,25 +76,29 @@ test('Create two items with different summarizer', async () => {
     facility
   );
 
-  const bookChangeQueue = createPromiseQueue();
+  try {
+    const bookChangeQueue = createPromiseQueue();
 
-  await book.subscribe(bookChangeQueue.push);
-  await book.create('sum', { x: 1, y: 2 });
+    await book.subscribe(bookChangeQueue.push);
+    await book.create('sum', { x: 1, y: 2 });
 
-  expect(book.get('sum')).resolves.toEqual({ x: 1, y: 2 });
-  expect(bookChangeQueue.shift()).resolves.toEqual({ id: 'sum', summary: { sum: 3 } });
+    expect(book.get('sum')).resolves.toEqual({ x: 1, y: 2 });
+    expect(await bookChangeQueue.shift()).resolves.toEqual({ id: 'sum', summary: { sum: 3 } });
 
-  expect(book.list()).resolves.toEqual({
-    sum: { sum: 3 }
-  });
+    expect(book.list()).resolves.toEqual({
+      sum: { sum: 3 }
+    });
 
-  await book.create('multiply', { x: 1, y: 2 });
+    await book.create('multiply', { x: 1, y: 2 });
 
-  expect(book.get('multiply')).resolves.toEqual({ x: 1, y: 2 });
-  expect(bookChangeQueue.shift()).resolves.toEqual({ id: 'multiply', summary: { multiply: 2 } });
+    expect(book.get('multiply')).resolves.toEqual({ x: 1, y: 2 });
+    expect(await bookChangeQueue.shift()).resolves.toEqual({ id: 'multiply', summary: { multiply: 2 } });
 
-  expect(book.list()).resolves.toEqual({
-    multiply: { multiply: 2 },
-    sum: { sum: 3 }
-  });
+    expect(book.list()).resolves.toEqual({
+      multiply: { multiply: 2 },
+      sum: { sum: 3 }
+    });
+  } catch (err) {
+    await book.end();
+  }
 });
