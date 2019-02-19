@@ -1,14 +1,16 @@
+import onErrorResumeNext from 'on-error-resume-next';
+
 import PromisifiedBlobService from './PromisifiedBlobService';
 
 const METADATA_SUMMARY_NAME = 'summary';
 
-export default function (blobService, container) {
+export default function (blobService, container, prefix = '') {
   const promisifiedBlobService = new PromisifiedBlobService(blobService);
 
   const create = async (blob, content, summary) => {
     await promisifiedBlobService.createBlockBlobFromText(
       container,
-      blob,
+      prefix + blob,
       JSON.stringify(content),
       {
         metadata: {
@@ -21,7 +23,7 @@ export default function (blobService, container) {
   const del = async blob => {
     await promisifiedBlobService.deleteBlob(
       container,
-      blob
+      prefix + blob
     );
   };
 
@@ -31,19 +33,20 @@ export default function (blobService, container) {
       text: contentJSON
     } = await promisifiedBlobService.getBlobToText(
       container,
-      blob,
+      prefix + blob,
       {}
     );
 
     return {
       content: JSON.parse(contentJSON),
-      summary: JSON.parse(summaryJSON)
+      summary: onErrorResumeNext(() => JSON.parse(summaryJSON))
     };
   };
 
   const list = async () => {
-    const { entries } = await promisifiedBlobService.listBlobsSegmented(
+    const { entries } = await promisifiedBlobService.listBlobsSegmentedWithPrefix(
       container,
+      prefix,
       null,
       { include: 'metadata' }
     );
@@ -54,7 +57,7 @@ export default function (blobService, container) {
         { metadata: { [METADATA_SUMMARY_NAME]: summary }, name }
       ) => ({
         ...result,
-        [name]: JSON.parse(summary)
+        [name.substr(prefix.length)]: onErrorResumeNext(() => JSON.parse(summary))
       }),
       {}
     );
@@ -63,7 +66,7 @@ export default function (blobService, container) {
   const lock = async blob => {
     const { id } = await promisifiedBlobService.acquireLease(
       container,
-      blob,
+      prefix + blob,
       {}
     );
 
@@ -73,7 +76,7 @@ export default function (blobService, container) {
   const unlock = async (blob, lockToken) => {
     await promisifiedBlobService.releaseLease(
       container,
-      blob,
+      prefix + blob,
       lockToken
     );
   };
@@ -91,7 +94,7 @@ export default function (blobService, container) {
       ) {
         await promisifiedBlobService.createBlockBlobFromText(
           container,
-          blob,
+          prefix + blob,
           JSON.stringify(nextContent),
           {
             leaseId: lockToken,
