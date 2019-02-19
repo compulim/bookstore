@@ -69,10 +69,11 @@ class PromisifiedBlobService {
     });
   }
 
-  listBlobsSegmented(container, currentToken, options) {
+  listBlobsSegmentedWithPrefix(container, prefix, currentToken, options) {
     return new Promise((resolve, reject) => {
-      this.blobService.listBlobsSegmented(
+      this.blobService.listBlobsSegmentedWithPrefix(
         container,
+        prefix,
         currentToken,
         options,
         (err, entries) => err ? reject(err) : resolve(entries)

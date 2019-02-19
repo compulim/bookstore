@@ -89,7 +89,7 @@ export default function (summarizer, facility) {
       const nextContent = await updater(content);
 
       changed = !Object.is(nextContent, content);
-      nextSummary = changed ? await summarizer(nextContent) : summary;
+      nextSummary = changed ? await summarizer(nextContent, id) : summary;
 
       return {
         content: nextContent,
