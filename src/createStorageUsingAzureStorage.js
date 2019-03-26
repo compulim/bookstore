@@ -67,7 +67,7 @@ export default function (blobService, container, prefix = '') {
     const { id } = await promisifiedBlobService.acquireLease(
       container,
       prefix + blob,
-      {}
+      { leaseDuration: '15' }
     );
 
     return id;
