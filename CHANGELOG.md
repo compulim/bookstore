@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fix [#4](https://github.com/compulim/bookstore/issues/4). Fix `update` did not send `id` to `summarizer`, by [@compulim](https://github.com/compulim), in PR [#3](https://github.com/compulim/bookstore/pull/3).
+- Fix [#5](https://github.com/compulim/bookstore/issues/5). Set lease to 15 seconds to prevent lock-ups due to errors, by [@compulim](https://github.com/compulim), in PR [#6](https://github.com/compulim/bookstore/pull/6).
 
 ## [2.2.0] - 2019-02-18
 
